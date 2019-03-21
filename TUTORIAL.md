@@ -1,5 +1,7 @@
 ## Tutorial
 
+## Python Software
+
 All the provided software was developed and tested in Python 3.5.6.
 
 If you are using Windows, it is advised to install Anaconda (https://www.anaconda.com/distribution/).
