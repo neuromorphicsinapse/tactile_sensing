@@ -11,4 +11,4 @@ Required libraries: _numpy_, _scipy_, _pyqtgraph_, _matplotlib_, _pyserial_, _py
 
 You can use pip in Anaconda prompt to install these packages:
 
-**pip install numpy, scipy, pyqtgraph, matplotlib, pyserial, pyqt5, sklearn**
+**pip install numpy scipy pyqtgraph matplotlib pyserial pyqt5 sklearn**
