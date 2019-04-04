@@ -14,7 +14,9 @@
 #-------------------------------------------------------------------------------
 #Paths
 import os, sys, glob
-sys.path.append('../libraries/')
+sys.path.append('../framework/libraries/general')
+sys.path.append('../framework/libraries/texture_recognition')
+sys.path.append('../framework/libraries/neuromorphic')
 #-------------------------------------------------------------------------------
 #PyQt libraries
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -29,6 +31,8 @@ import numpy as np
 import scipy.signal as sig
 from copy import copy
 from dataprocessing import *
+import texture
+from tactileboard import *
 import spiking_neurons as spkn
 #-------------------------------------------------------------------------------
 #matplotlib libraries for pyqt
@@ -38,7 +42,6 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 import matplotlib.pyplot as plt
 #-------------------------------------------------------------------------------
 Ui_MainWindow, QMainWindow = loadUiType('formSpikeAnalysis_gui.ui')
-#-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 class CONSTS():
     NOFILTER = 0
@@ -53,11 +56,6 @@ class CONSTS():
     DERIVATIVE = 1
     NTAXELS = 16
     NPATCH = 5
-    NROWS = 4
-    NCOLS = 4
-    SAMPFREQ = 1000
-#-------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------
 class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(FormSpikeAnalysis,self).__init__()
@@ -192,7 +190,7 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         #select the proper sensor patch according to the GUI
         # self.doSelectPatch()
         #copy the raw signals
-        self.procTactile = [self.rawTactile[:,k] for k in range(CONSTS.NTAXELS)]
+        self.procTactile = [self.rawTactile[:,k] for k in range(TBCONSTS.NTAXELS)]
         #-----------------------------------------------------------------------
         #filtering
         if self.filterType is not CONSTS.NOFILTER:
@@ -272,17 +270,29 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         load tactile signal from a given file
         '''
         try:
-            tactile_signals = np.loadtxt(self.filename)
-            self.tactiledata = [[] for k in range(CONSTS.NPATCH)]
-            for k in range(CONSTS.NPATCH):
-                self.tactiledata[k] = np.zeros((len(tactile_signals),CONSTS.NTAXELS))
-                aux_taxel = 0
-                for j in range(k,80,5):
-                    self.tactiledata[k][:,aux_taxel] = tactile_signals[:,j]
-                    aux_taxel += 1
-            self.rawTactile = self.tactiledata[0]
-            self.rawTime = np.arange(0,len(self.rawTactile)) * (1.0/CONSTS.SAMPFREQ)
-            return True
+            if self.chTexture.isChecked():
+                print('here')
+                tactile_signals = np.loadtxt(self.filename)
+                self.tactiledata = [[] for k in range(TBCONSTS.NPATCH)]
+                for k in range(1):
+                    self.tactiledata[k] = np.zeros((len(tactile_signals),TBCONSTS.NTAXELS))
+                    for j in range(TBCONSTS.NTAXELS):
+                        self.tactiledata[k][:,j] = tactile_signals[:,j]
+                self.rawTactile = self.tactiledata[0]
+                self.rawTime = np.arange(0,len(self.rawTactile)) * (1.0/TBCONSTS.SAMPFREQ)
+                return True
+            else:
+                tactile_signals = np.loadtxt(self.filename)
+                self.tactiledata = [[] for k in range(TBCONSTS.NPATCH)]
+                for k in range(TBCONSTS.NPATCH):
+                    self.tactiledata[k] = np.zeros((len(tactile_signals),TBCONSTS.NTAXELS))
+                    aux_taxel = 0
+                    for j in range(k,80,5):
+                        self.tactiledata[k][:,aux_taxel] = tactile_signals[:,j]
+                        aux_taxel += 1
+                self.rawTactile = self.tactiledata[0]
+                self.rawTime = np.arange(0,len(self.rawTactile)) * (1.0/TBCONSTS.SAMPFREQ)
+                return True
         except:
             return False
 #-------------------------------------------------------------------------------
@@ -291,7 +301,7 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         plot the raw tactile signal
         '''
         self.rawAxes.clear()
-        self.rawAxes.plot(self.rawTime,self.rawTactile[:,0:CONSTS.NTAXELS])
+        self.rawAxes.plot(self.rawTime,self.rawTactile[:,0:TBCONSTS.NTAXELS])
         self.rawAxes.set_xlim([self.rawTime[0],self.rawTime[-1]])
         # self.rawAxes = self.rawFigure.add_subplot(2,1,2)
         # self.rawAxes.plot(self.rawTime,self.rawTactile[:,-1])
@@ -304,7 +314,7 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         plot the processed signal
         '''
         self.procAxes.clear()
-        self.procTime = np.arange(0,len(self.procTactile[0])) * (1.0/CONSTS.SAMPFREQ)
+        self.procTime = np.arange(0,len(self.procTactile[0])) * (1.0/TBCONSTS.SAMPFREQ)
         [self.procAxes.plot(self.procTime,x) for x in self.procTactile]
         self.procAxes.set_xlim([self.procTime[0],self.procTime[-1]])
         self.procAxes.set_xlabel('Time (s)')
@@ -320,19 +330,19 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
             #create a high pass filter
             if self.filterType is CONSTS.HIGHPASS:
                 self.highPassFc = float(self.tbHighPass.text())
-                wn = self.highPassFc / (CONSTS.SAMPFREQ/2.0)
+                wn = self.highPassFc / (TBCONSTS.SAMPFREQ/2.0)
                 self.filtb, self.filta = sig.butter(self.npoles,wn,'high')
             #create a low pass filter
             elif self.filterType is CONSTS.LOWPASS:
                 self.lowPassFc = float(self.tbLowPass.text())
-                wn = self.lowPassFc / (CONSTS.SAMPFREQ/2.0)
+                wn = self.lowPassFc / (TBCONSTS.SAMPFREQ/2.0)
                 self.filtb, self.filta = sig.butter(self.npoles,wn,'low')
             #create a bandpass filter
             elif self.filterType is CONSTS.BANDPASS:
                 self.highPassFc = float(self.tbHighPass.text())
                 self.lowPassFc = float(self.tbLowPass.text())
-                wnh = self.highPassFc / (CONSTS.SAMPFREQ/2.0)
-                wnl = self.lowPassFc / (CONSTS.SAMPFREQ/2.0)
+                wnh = self.highPassFc / (TBCONSTS.SAMPFREQ/2.0)
+                wnl = self.lowPassFc / (TBCONSTS.SAMPFREQ/2.0)
                 self.filtb, self.filta = sig.butter(self.npoles,[wnh,wnl],'bandpass')
             return True #return true --> success!
         except:
@@ -346,7 +356,7 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         normalize the tactile signals
         '''
         try:
-            ts = int(0); te = int(1*CONSTS.SAMPFREQ)
+            ts = int(0); te = int(1*TBCONSTS.SAMPFREQ)
             #take the baseline value
             baseline = [np.mean(x[ts:te]) for x in self.procTactile]
             #take the minimum value
@@ -357,8 +367,8 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
             #take the percentage value
             self.baselinePercentage = float(self.tbBaseline.text()) / 100.0
 
-            self.procTactile = [convscale(self.procTactile[k],baseline[k],baseline[k]*self.baselinePercentage,self.vmin,self.vmax) for k in range(CONSTS.NTAXELS)]
-            # self.procTactile = [self.procTactile[k]-baseline[k] for k in range(CONSTS.NTAXELS)]
+            self.procTactile = [convscale(self.procTactile[k],baseline[k],baseline[k]*self.baselinePercentage,self.vmin,self.vmax) for k in range(TBCONSTS.NTAXELS)]
+            # self.procTactile = [self.procTactile[k]-baseline[k] for k in range(TBCONSTS.NTAXELS)]
 
             #
             return True
@@ -372,8 +382,8 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         try:
             tstart = float(self.tbTstart.text())
             tend = float(self.tbTend.text())
-            tstart = int(tstart * CONSTS.SAMPFREQ)
-            tend = int(tend * CONSTS.SAMPFREQ)
+            tstart = int(tstart * TBCONSTS.SAMPFREQ)
+            tend = int(tend * TBCONSTS.SAMPFREQ)
             if tstart >= tend:
                 return False
             if tstart < 0:
@@ -399,7 +409,7 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         self.d = float(self.tbIzd.text())
         self.GF = float(self.tbGain.text())
         #neurons
-        self.neurons = [spkn.model.izhikevich(a=self.a,b=self.b,c=self.c,d=self.d,name=str(k)) for k in range(CONSTS.NTAXELS)]
+        self.neurons = [spkn.model.izhikevich(a=self.a,b=self.b,c=self.c,d=self.d,name=str(k)) for k in range(TBCONSTS.NTAXELS)]
         #currents
         #determine if raw input current should be used or its derivative (FA-I)
         if self.currentType == CONSTS.DERIVATIVE:
@@ -419,7 +429,7 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         #create the simulation object
         self.simulObj = spkn.simulation(self.dt,self.t0,self.tf,self.currents,self.neurons)
         #run the simulation
-        self.simulObj.run()
+        self.simulObj.optIzhikevich()
         #rastergram
         self.rasters = spkn.analysis.raster(self.simulObj)
         #plot the results
@@ -458,13 +468,13 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         if i == 0:
             #plot inputs
             self.inputSpkAxes = self.inputSpkFigure.add_subplot(1,1,1)
-            for k in range(CONSTS.NTAXELS):
+            for k in range(TBCONSTS.NTAXELS):
                 self.inputSpkAxes.plot(self.simulObj.timev,self.simulObj.I[k])
             self.inputSpkAxes.set_xlim([self.simulObj.timev[0],self.simulObj.timev[-1]])
             self.inputSpkAxes.set_xlabel('Time (ms)')
         elif i==1:
             #plot inputs
-            for k in range(CONSTS.NTAXELS):
+            for k in range(TBCONSTS.NTAXELS):
                 self.inputSpkAxes = self.inputSpkFigure.add_subplot(4,4,k+1)
                 self.inputSpkAxes.plot(self.simulObj.timev,self.simulObj.I[k])
                 self.inputSpkAxes.set_xlim([self.simulObj.timev[0],self.simulObj.timev[-1]])
@@ -475,15 +485,15 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         self.simulResultsFigure.clear()
         if i == 0:
             #plot results
-            for k in range(CONSTS.NTAXELS):
+            for k in range(TBCONSTS.NTAXELS):
                 self.simulResultsAxes = self.simulResultsFigure.add_subplot(4,4,k+1)
                 self.simulResultsAxes.plot(self.simulObj.timen[k],self.simulObj.vneurons[k])
                 self.simulResultsAxes.set_xlim([self.simulObj.timev[0],self.simulObj.timev[-1]])
         elif i == 1:
             self.simulResultsAxes = self.simulResultsFigure.add_subplot(1,1,1)
-            for k in range(CONSTS.NTAXELS):
+            for k in range(TBCONSTS.NTAXELS):
                 self.simulResultsAxes.scatter(self.rasters.xvals[k],self.rasters.yvals[k],marker='|',color='k')
-            self.simulResultsAxes.set_ylim([0,CONSTS.NTAXELS])
+            self.simulResultsAxes.set_ylim([0,TBCONSTS.NTAXELS])
             self.simulResultsAxes.set_xlim([self.simulObj.timev[0],self.simulObj.timev[-1]])
             self.simulResultsAxes.set_xlabel('Time (ms)')
             self.simulResultsAxes.set_ylabel('Neuron id')
