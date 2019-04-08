@@ -428,7 +428,7 @@ class FormSpikeAnalysis(QMainWindow, Ui_MainWindow):
         #create the simulation object
         self.simulObj = spkn.simulation(self.dt,self.t0,self.tf,self.currents,self.neurons)
         #run the simulation
-        self.simulObj.optIzhikevich()
+        self.simulObj.run()
         #rastergram
         self.rasters = spkn.analysis.raster(self.simulObj)
         #plot the results
